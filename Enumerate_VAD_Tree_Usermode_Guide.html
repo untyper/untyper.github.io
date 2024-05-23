@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enumerating the VAD Tree in User Mode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        code {
+            font-family: Consolas, "Courier New", monospace;
+        }
+        .keyword { color: #0000ff; }
+        .string { color: #a31515; }
+        .comment { color: #008000; }
+        .preprocessor { color: #cc7832; }
+        .type { color: #267f99; }
+        .function { color: #795e26; }
+    </style>
+</head>
+<body>
+    <h1>Enumerating the VAD Tree in User Mode</h1>
+    <p>Enumerating the VAD tree directly from user mode without relying on functions like <code>VirtualQuery</code> requires a deep understanding of the Windows kernel data structures and access to process memory. This typically involves reading the internal structures of the EPROCESS and its associated VAD tree. Here is an approach to achieve this by reading process memory.</p>
+
+    <h2>Prerequisites</h2>
+    <ul>
+        <li><strong>Understanding Windows Internals</strong>: You need to be familiar with the Windows memory manager and internal data structures.</li>
+        <li><strong>Administrative Privileges</strong>: Reading another process's memory requires administrative privileges.</li>
+        <li><strong>Access to Debug Symbols</strong>: Use Microsoft's public debug symbols to understand structure offsets.</li>
+    </ul>
+
+    <h2>Steps</h2>
+    <ol>
+        <li>Obtain a Handle to the Target Process: Use <code>OpenProcess</code> with appropriate privileges.</li>
+        <li>Locate the EPROCESS Structure: This typically involves using a driver or a tool to obtain the address of the EPROCESS structure.</li>
+        <li>Read the VAD Root: Read the VAD root from the EPROCESS structure.</li>
+        <li>Traverse the VAD Tree: Read the VAD nodes recursively to enumerate the entire tree.</li>
+    </ol>
+
+    <h2>Example</h2>
+    <p>Here's a simplified example using C++ that demonstrates reading memory from a target process. Note that this example assumes you have a way to obtain the address of the EPROCESS structure.</p>
+
+    <h3>1. Define Necessary Structures</h3>
+    <p>First, define the necessary structures based on your understanding of the EPROCESS and VAD tree structures. Note that these structures may change between Windows versions.</p>
+    <pre><code>
+<span class="preprocessor">#include &lt;Windows.h&gt;</span>
+<span class="preprocessor">#include &lt;iostream&gt;</span>
+<span class="preprocessor">#include &lt;vector&gt;</span>
+
+<span class="comment">// Example structures (simplified and may not be accurate)</span>
+<span class="keyword">struct</span> <span class="type">MMVAD_SHORT</span> {
+    <span class="type">ULONG_PTR</span> StartingVpn;
+    <span class="type">ULONG_PTR</span> EndingVpn;
+    <span class="type">MMVAD_SHORT*</span> LeftChild;
+    <span class="type">MMVAD_SHORT*</span> RightChild;
+};
+
+<span class="keyword">struct</span> <span class="type">EPROCESS</span> {
+    <span class="type">MMVAD_SHORT*</span> VadRoot;
+    <span class="comment">// Other members...</span>
+};
+</code></pre>
+
+    <h3>2. Utility Functions to Read Process Memory</h3>
+    <pre><code>
+<span class="keyword">BOOL</span> ReadProcessMemorySafe(<span class="type">HANDLE</span> hProcess, <span class="type">LPCVOID</span> lpBaseAddress, <span class="type">LPVOID</span> lpBuffer, <span class="type">SIZE_T</span> nSize) {
+    <span class="type">SIZE_T</span> bytesRead;
+    <span class="keyword">return</span> ReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, &amp;bytesRead) &amp;&amp; bytesRead == nSize;
+}
+</code></pre>
+
+    <h3>3. Function to Enumerate VAD Tree</h3>
+    <pre><code>
+<span class="keyword">void</span> EnumerateVadTree(<span class="type">HANDLE</span> hProcess, <span class="type">MMVAD_SHORT*</span> VadRoot) {
+    <span class="keyword">if</span> (VadRoot == <span class="keyword">nullptr</span>) <span class="keyword">return</span>;
+
+    <span class="type">MMVAD_SHORT</span> vadNode;
+    <span class="keyword">if</span> (!ReadProcessMemorySafe(hProcess, VadRoot, &amp;vadNode, <span class="keyword">sizeof</span>(vadNode))) {
+        std::cerr &lt;&lt; <span class="string">"Failed to read VAD node."</span> &lt;&lt; std::endl;
+        <span class="keyword">return</span>;
+    }
+
+    <span class="comment">// Traverse left child</span>
+    EnumerateVadTree(hProcess, vadNode.LeftChild);
+
+    <span class="comment">// Process current node</span>
+    std::wcout &lt;&lt; <span class="string">L"VAD Node: Start = "</span> &lt;&lt; (vadNode.StartingVpn &lt;&lt; <span class="number">12</span>) &lt;&lt; <span class="string">L", End = "</span> &lt;&lt; ((vadNode.EndingVpn &lt;&lt; <span class="number">12</span>) + <span class="number">0xFFF</span>) &lt;&lt; std::endl;
+
+    <span class="comment">// Traverse right child</span>
+    EnumerateVadTree(hProcess, vadNode.RightChild);
+}
+</code></pre>
+
+    <h3>4. Main Function to Drive the Process</h3>
+    <pre><code>
+<span class="keyword">int</span> main() {
+    <span class="type">DWORD</span> pid = <span class="number">1234</span>; <span class="comment">// Replace with the target process ID</span>
+    <span class="type">HANDLE</span> hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, <span class="keyword">FALSE</span>, pid);
+
+    <span class="keyword">if</span> (!hProcess) {
+        std::cerr &lt;&lt; <span class="string">"Failed to open process."</span> &lt;&lt; std::endl;
+        <span class="keyword">return</span> <span class="number">1</span>;
+    }
+
+    <span class="comment">// Assume we somehow obtained the EPROCESS address</span>
+    <span class="type">EPROCESS</span> eprocess;
+    <span class="type">LPCVOID</span> eprocessAddress = <span class="comment">/* address of the EPROCESS structure */</span>;
+    
+    <span class="keyword">if</span> (!ReadProcessMemorySafe(hProcess, eprocessAddress, &amp;eprocess, <span class="keyword">sizeof</span>(eprocess))) {
+        std::cerr &lt;&lt; <span class="string">"Failed to read EPROCESS structure."</span> &lt;&lt; std::endl;
+        CloseHandle(hProcess);
+        <span class="keyword">return</span> <span class="number">1</span>;
+    }
+
+    <span class="comment">// Enumerate the VAD tree</span>
+    EnumerateVadTree(hProcess, eprocess.VadRoot);
+
+    CloseHandle(hProcess);
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+</code></pre>
+
+    <h2>Important Considerations</h2>
+    <ul>
+        <li><strong>Accuracy of Structures</strong>: Ensure the structure definitions and offsets are accurate for your specific Windows version.</li>
+        <li><strong>Error Handling</strong>: Add robust error handling and logging to diagnose issues.</li>
+        <li><strong>Security and Permissions</strong>: Ensure you have appropriate permissions to read process memory.</li>
+        <li><strong>Kernel-mode Assistance</strong>: In practice, obtaining the EPROCESS structure address might require kernel-mode assistance or advanced techniques.</li>
+    </ul>
+
+    <h2>Summary</h2>
+    <p>Enumerating the VAD tree from user mode involves reading and interpreting kernel memory structures, which is complex and requires deep knowledge of Windows internals. The provided example gives a starting point, but thorough testing and validation are essential, especially due to variations in Windows versions and potential security restrictions.</p>
+</body>
+</html>

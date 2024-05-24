@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assembly Explanation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Saving, Reassigning, and Restoring the rax Register in Intel x64 Assembly</h1>
+    
+    <h2>Steps:</h2>
+    <ol>
+        <li><strong>Save the current value of <code>rax</code></strong>: Push the value of <code>rax</code> onto the stack.</li>
+        <li><strong>Reassign <code>rax</code> to hold the function address</strong>: Load the address of the function you want to call into <code>rax</code>.</li>
+        <li><strong>Call the function via <code>rax</code></strong>: Use the <code>call rax</code> instruction to call the function.</li>
+        <li><strong>Restore <code>rax</code></strong>: Pop the saved value of <code>rax</code> from the stack to restore it to its original value.</li>
+    </ol>
+    
+    <h2>Example Code Snippet:</h2>
+    <pre><code>section .data
+    ; Data section (if needed)
+
+section .text
+    global _start
+
+_start:
+    ; Save the current value of rax
+    push rax
+
+    ; Assign the function address to rax using mov
+    mov rax, my_function
+
+    ; Call the function via rax
+    call rax
+
+    ; Restore the original value of rax
+    pop rax
+
+    ; Exit the program (Linux syscall)
+    mov rax, 60   ; syscall number for exit
+    xor rdi, rdi  ; exit code 0
+    syscall
+
+my_function:
+    ; Example function
+    ; Perform some operations (this is just a placeholder)
+
+    ret
+</code></pre>
+    
+    <h2>Explanation:</h2>
+    <ol>
+        <li><strong>Push <code>rax</code> onto the stack</strong>:
+            <pre><code>push rax</code></pre>
+            This saves the current value of <code>rax</code> by pushing it onto the stack.
+        </li>
+        <li><strong>Load the function address into <code>rax</code> using <code>mov</code></strong>:
+            <pre><code>mov rax, my_function</code></pre>
+            This moves the address of <code>my_function</code> into <code>rax</code>. The <code>mov</code> instruction directly assigns the address to <code>rax</code>.
+        </li>
+        <li><strong>Call the function via <code>rax</code></strong>:
+            <pre><code>call rax</code></pre>
+            This calls the function whose address is stored in <code>rax</code>.
+        </li>
+        <li><strong>Restore the original value of <code>rax</code></strong>:
+            <pre><code>pop rax</code></pre>
+            This pops the saved value of <code>rax</code> off the stack, restoring its original value.
+        </li>
+        <li><strong>Exit the program</strong>:
+            <pre><code>mov rax, 60   ; syscall number for exit
+xor rdi, rdi  ; exit code 0
+syscall</code></pre>
+            These instructions are used to exit the program cleanly.
+        </li>
+    </ol>
+    
+    <h2>Notes:</h2>
+    <ul>
+        <li>The <code>push</code> and <code>pop</code> instructions are used to save and restore the <code>rax</code> register value.</li>
+        <li>The <code>mov</code> instruction is used to load the address of <code>my_function</code> into <code>rax</code>.</li>
+        <li>The <code>call rax</code> instruction calls the function at the address stored in <code>rax</code>.</li>
+    </ul>
+</body>
+</html>

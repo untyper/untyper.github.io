@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Writeable Pages and Executability in 32-bit Systems</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        pre {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 3px solid #f36d33;
+            color: #333;
+            page-break-inside: avoid;
+            font-family: monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 1.6em;
+            max-width: 100%;
+            overflow: auto;
+            padding: 1em 1.5em;
+            display: block;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: monospace;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 1.2em;
+            margin-bottom: 1.2em;
+            color: #333;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.75em; }
+        h3 { font-size: 1.5em; }
+        h4 { font-size: 1.25em; }
+        h5 { font-size: 1em; }
+        h6 { font-size: 0.875em; }
+        p {
+            margin: 1.2em 0;
+        }
+        .keyword { color: #0000ff; font-weight: bold; }
+        .type { color: #2b91af; font-weight: bold; }
+        .function { color: #795e26; }
+        .constant { color: #a31515; }
+        .comment { color: #008000; font-style: italic; }
+        .string { color: #a31515; }
+    </style>
+</head>
+<body>
+    <h1>Writeable Pages and Executability in 32-bit Systems</h1>
+    <p>In early 32-bit systems, the concept of separating executable and non-executable memory regions was not natively supported by the hardware. This means that, by default, any writable page was also executable. Here's a deeper look into why this was the case and how it has evolved over time:</p>
+    
+    <h2>1. Early 32-bit Architecture Limitations</h2>
+    <p>In the original 32-bit x86 architecture, the page table entries did not include a bit to mark a page as non-executable. The primary attributes that could be set in the page table entry included:</p>
+    <ul>
+        <li><strong>Present:</strong> Indicates if the page is in physical memory.</li>
+        <li><strong>Read/Write:</strong> Indicates if the page is writable.</li>
+        <li><strong>User/Supervisor:</strong> Indicates if the page is accessible from user mode.</li>
+        <li><strong>Accessed:</strong> Indicates if the page has been accessed.</li>
+        <li><strong>Dirty:</strong> Indicates if the page has been written to.</li>
+    </ul>
+    <p>Since there was no Execute Disable (XD) bit, any page that was marked as writable could also be executed. This lack of separation meant that the operating system and applications had to rely on software-based methods to enforce memory protection, which were often less effective and more complex.</p>
+
+    <h2>2. The Introduction of the NX Bit</h2>
+    <p>To address these security concerns, the NX (No Execute) bit was introduced as part of the AMD64 (x86-64) architecture and later adopted by Intel as the XD (Execute Disable) bit. This feature allows the operating system to mark certain memory pages as non-executable, providing a hardware-based mechanism to prevent code execution from data pages.</p>
+    <p>With the NX/XD bit, memory regions can be marked as:</p>
+    <ul>
+        <li><strong>Executable:</strong> Code can be executed from these pages.</li>
+        <li><strong>Non-executable:</strong> Code execution is not allowed, even if the page is writable.</li>
+    </ul>
+
+    <h2>3. Security Implications</h2>
+    <p>The lack of an XD bit in 32-bit systems made them more vulnerable to certain types of attacks, such as buffer overflows and other code injection techniques. Attackers could exploit these vulnerabilities by injecting malicious code into writable memory regions and then executing it.</p>
+    <p>The introduction of the NX/XD bit in 64-bit systems has significantly enhanced security by providing a straightforward way to enforce the separation of code and data, reducing the attack surface for such exploits.</p>
+
+    <h2>4. Compatibility and Software Solutions</h2>
+    <p>Although the hardware support for the NX bit was not available in early 32-bit systems, various software-based solutions were developed to provide similar protections. These solutions include:</p>
+    <ul>
+        <li><strong>Data Execution Prevention (DEP):</strong> An operating system-level feature that marks certain regions of memory as non-executable.</li>
+        <li><strong>PaX:</strong> A patch for the Linux kernel that provides non-executable memory support and other security enhancements.</li>
+    </ul>
+    <p>These software-based approaches, while helpful, were not as robust or efficient as hardware-based solutions. They often required significant overhead and could be bypassed by advanced exploitation techniques.</p>
+
+    <h2>Conclusion</h2>
+    <p>In summary, early 32-bit systems did not include hardware support for marking pages as non-executable, resulting in writable pages also being executable by default. The introduction of the NX/XD bit in 64-bit architectures addressed this limitation by providing a hardware-based mechanism to enforce memory protection, significantly enhancing system security. While software-based solutions were developed for 32-bit systems, they were not as effective or efficient as the hardware support available in modern 64-bit systems.</p>
+</body>
+</html>

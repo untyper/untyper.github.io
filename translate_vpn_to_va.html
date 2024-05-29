@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translate Virtual Page Number to Virtual Address</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow: auto;
+        }
+        code {
+            font-family: Consolas, monospace;
+        }
+        .keyword { color: #0000ff; }
+        .type { color: #2b91af; }
+        .comment { color: #008000; }
+        .string { color: #a31515; }
+        .number { color: #098658; }
+    </style>
+</head>
+<body>
+
+    <h1>How to translate Virtual Page Number (VPN) to Virtual Address?</h1>
+    
+    <p>You can convert the Virtual Page Number (VPN) to the base address of the virtual page. This base address is simply the start address of the page corresponding to the VPN.</p>
+
+    <h2>Steps to Follow</h2>
+    <ol>
+        <li><strong>Determine the Page Size:</strong> This is typically a known constant (e.g., 4KB).</li>
+        <li><strong>Shift the VPN to Obtain the Base Address:</strong> Multiply the VPN by the page size to get the base address of the page.</li>
+    </ol>
+
+    <h2>Code Example</h2>
+    <p>Here is the C++ code to illustrate this process:</p>
+
+    <pre><code><span class="keyword">#include</span> <span class="string">&lt;iostream&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;cstdint&gt;</span>
+
+<span class="type">uint64_t</span> convertVPNToBaseAddress(<span class="type">uint64_t</span> vpn, <span class="type">uint64_t</span> pageSizeBits) {
+    <span class="comment">// Shift the VPN to the left by the number of bits representing the page size</span>
+    <span class="type">uint64_t</span> baseAddress = vpn << pageSizeBits;
+    <span class="keyword">return</span> baseAddress;
+}
+
+<span class="keyword">int</span> main() {
+    <span class="type">uint64_t</span> vpn = <span class="number">1234</span>; <span class="comment">// Example Virtual Page Number</span>
+    <span class="type">uint64_t</span> pageSizeBits = <span class="number">12</span>; <span class="comment">// Example number of bits for 4KB page size (2^12 = 4096)</span>
+    
+    <span class="type">uint64_t</span> baseAddress = convertVPNToBaseAddress(vpn, pageSizeBits);
+    
+    std::cout &lt;&lt; <span class="string">"Base Address of Virtual Page: "</span> &lt;&lt; std::hex &lt;&lt; baseAddress &lt;&lt; std::endl;
+    
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+</code></pre>
+
+    <h2>Explanation:</h2>
+    <ol>
+        <li><strong>Bitwise Shift Operation:</strong>
+            <p><code>vpn &lt;&lt; pageSizeBits</code> shifts the VPN to the left by the number of bits specified by <code>pageSizeBits</code>. For a 4KB page size, this is 12 bits.</p>
+        </li>
+        <li><strong>Example Calculation:</strong>
+            <p>If <code>vpn</code> is 1234 and <code>pageSizeBits</code> is 12, the base address calculation would be:</p>
+            <pre><code>uint64_t baseAddress = 1234 &lt;&lt; 12; <span class="comment">// Equivalent to 1234 * 4096</span></code></pre>
+            <p>This results in a base address that starts at the beginning of the 1234th virtual page, with the offset bits set to zero.</p>
+        </li>
+        <li><strong>Efficiency and Hardware Alignment:</strong>
+            <p>Most modern processors can perform bitwise shifts in a single cycle, whereas multiplication can take multiple cycles. Aligning with hardware design and common system programming practices ensures that the code is both optimal and easy to understand for those familiar with these concepts.</p>
+        </li>
+    </ol>
+    
+</body>
+</html>

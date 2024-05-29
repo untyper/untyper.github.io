@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What is the EndingVPN property of the MMVAD_SHORT structure?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow: auto;
+        }
+        code {
+            font-family: Consolas, monospace;
+        }
+        .keyword { color: #0000ff; }
+        .type { color: #2b91af; }
+        .comment { color: #008000; }
+        .string { color: #a31515; }
+        .number { color: #098658; }
+    </style>
+</head>
+<body>
+
+    <h1>What is the EndingVPN property of the MMVAD_SHORT structure?</h1>
+    
+    <p>The <code>MMVAD_SHORT</code> structure is a key data structure used by the Windows Memory Manager to describe the properties of a memory region allocated to a process. Specifically, it represents a Virtual Address Descriptor (VAD), which is used to keep track of the virtual address space of a process. The <code>MMVAD_SHORT</code> structure contains various fields, including the <code>StartingVpn</code> and <code>EndingVpn</code>.</p>
+
+    <h2><code>EndingVpn</code> Property</h2>
+
+    <p>The <code>EndingVpn</code> property of the <code>MMVAD_SHORT</code> structure indicates the last virtual page number (VPN) of the memory region described by this VAD. Essentially, it marks the upper boundary of the virtual address range managed by this VAD.</p>
+
+    <h3>Key Points:</h3>
+    <ul>
+        <li><strong>VPN Representation:</strong> The <code>EndingVpn</code> field is typically represented as an unsigned integer that signifies the virtual page number.</li>
+        <li><strong>Range Description:</strong> Together with the <code>StartingVpn</code> property, <code>EndingVpn</code> defines a contiguous range of virtual pages. The memory region covered by this VAD extends from <code>StartingVpn</code> to <code>EndingVpn</code>, inclusive.</li>
+        <li><strong>Virtual Address Calculation:</strong> The actual virtual addresses can be calculated by multiplying the VPN by the page size. For example, if the page size is 4KB (4096 bytes), the virtual address range can be determined by:
+            <ul>
+                <li><code>StartingAddress = StartingVpn * 4096</code></li>
+                <li><code>EndingAddress = (EndingVpn + 1) * 4096 - 1</code></li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>Example</h3>
+
+    <p>Suppose we have an <code>MMVAD_SHORT</code> structure with the following values:</p>
+    <ul>
+        <li><code>StartingVpn = 1000</code></li>
+        <li><code>EndingVpn = 1050</code></li>
+    </ul>
+
+    <p>Assuming a page size of 4KB, the virtual address range described by this VAD would be:</p>
+    <ul>
+        <li>Starting address: <code>1000 * 4096 = 0xFA000</code></li>
+        <li>Ending address: <code>(1050 + 1) * 4096 - 1 = 0x109FFF</code></li>
+    </ul>
+
+    <h2>Example Code</h2>
+
+    <p>Below is a simplified C++ example demonstrating how these properties could be used to determine the virtual address range:</p>
+
+    <pre><code><span class="keyword">#include</span> <span class="string">&lt;iostream&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;cstdint&gt;</span>
+
+<span class="keyword">struct</span> MMVAD_SHORT {
+    <span class="type">uint64_t</span> StartingVpn;
+    <span class="type">uint64_t</span> EndingVpn;
+};
+
+<span class="type">uint64_t</span> calculateStartingAddress(<span class="type">uint64_t</span> vpn, <span class="type">uint64_t</span> pageSize) {
+    <span class="keyword">return</span> vpn * pageSize;
+}
+
+<span class="type">uint64_t</span> calculateEndingAddress(<span class="type">uint64_t</span> vpn, <span class="type">uint64_t</span> pageSize) {
+    <span class="keyword">return</span> (vpn + <span class="number">1</span>) * pageSize - <span class="number">1</span>;
+}
+
+<span class="keyword">int</span> main() {
+    MMVAD_SHORT vad;
+    vad.StartingVpn = <span class="number">1000</span>; <span class="comment">// Example Starting VPN</span>
+    vad.EndingVpn = <span class="number">1050</span>;   <span class="comment">// Example Ending VPN</span>
+    
+    <span class="type">uint64_t</span> pageSize = <span class="number">4096</span>; <span class="comment">// Example page size (4KB)</span>
+    
+    <span class="type">uint64_t</span> startingAddress = calculateStartingAddress(vad.StartingVpn, pageSize);
+    <span class="type">uint64_t</span> endingAddress = calculateEndingAddress(vad.EndingVpn, pageSize);
+    
+    std::cout &lt;&lt; <span class="string">"Starting Address: "</span> &lt;&lt; std::hex &lt;&lt; startingAddress &lt;&lt; std::endl;
+    std::cout &lt;&lt; <span class="string">"Ending Address: "</span> &lt;&lt; std::hex &lt;&lt; endingAddress &lt;&lt; std::endl;
+    
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+</code></pre>
+
+    <h2>Explanation:</h2>
+    <ul>
+        <li><strong>MMVAD_SHORT Structure:</strong> A simple structure with <code>StartingVpn</code> and <code>EndingVpn</code> fields.</li>
+        <li><strong>calculateStartingAddress Function:</strong> Multiplies the <code>StartingVpn</code> by the page size to get the starting address.</li>
+        <li><strong>calculateEndingAddress Function:</strong> Computes the ending address by multiplying <code>(EndingVpn + 1)</code> by the page size and subtracting 1.</li>
+        <li><strong>Main Function:</strong> Demonstrates how to use these functions to get the starting and ending addresses of the memory range described by the VAD.</li>
+    </ul>
+
+    <p>This code illustrates how the <code>EndingVpn</code> property, along with the <code>StartingVpn</code>, defines the boundaries of a virtual address range within a process's address space.</p>
+
+</body>
+</html>

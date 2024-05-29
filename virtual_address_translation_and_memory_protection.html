@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Virtual Address Translation and Memory Protection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        pre {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 3px solid #f36d33;
+            color: #333;
+            page-break-inside: avoid;
+            font-family: monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 1.6em;
+            max-width: 100%;
+            overflow: auto;
+            padding: 1em 1.5em;
+            display: block;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: monospace;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 1.2em;
+            margin-bottom: 1.2em;
+            color: #333;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.75em; }
+        h3 { font-size: 1.5em; }
+        h4 { font-size: 1.25em; }
+        h5 { font-size: 1em; }
+        h6 { font-size: 0.875em; }
+        p {
+            margin: 1.2em 0;
+        }
+        .keyword { color: #0000ff; font-weight: bold; }
+        .type { color: #2b91af; font-weight: bold; }
+        .function { color: #795e26; }
+        .constant { color: #a31515; }
+    </style>
+</head>
+<body>
+    <h1>Understanding Virtual Address Translation and Memory Protection</h1>
+    <p>To read the memory protection and other attributes from the Page Table Entry (PTE) for a given virtual address, you can use any address within that page. The PTE contains information about the entire page, so the specific offset within the page doesn't matter for this purpose. However, the page table walk uses the page's base address calculated from the given virtual address.</p>
+
+    <h2>Steps to Get Physical Address and Read Memory Protection</h2>
+    <ol>
+        <li>Calculate Page Table Indices: Extract the indices (PML4, PDPT, PD, PT) from the given virtual address.</li>
+        <li>Walk the Page Table: Use the indices to traverse the page tables (PML4, PDPT, PD, PT) to find the PTE.</li>
+        <li>Read the PTE: The PTE will give you the physical address of the page and the memory protection flags.</li>
+        <li>Check if Page is Committed: Determine if the page is committed by examining the PTE.</li>
+    </ol>
+
+    <h2>Example Address</h2>
+    <p>Let's assume we have a virtual address: <code>0x00007FBF12345678</code>.</p>
+
+    <h2>1. Extract Indices and Offset</h2>
+    <p>From this virtual address, we extract:</p>
+    <ul>
+        <li><strong>PML4 Index:</strong> Bits 47-39.</li>
+        <li><strong>PDPT Index:</strong> Bits 38-30.</li>
+        <li><strong>PD Index:</strong> Bits 29-21.</li>
+        <li><strong>PT Index:</strong> Bits 20-12.</li>
+        <li><strong>Page Offset:</strong> Bits 11-0.</li>
+    </ul>
+
+    <h2>2. Walk the Page Table</h2>
+    <pre><code><span class="keyword">#include</span> &lt;<span class="type">ntddk.h</span>&gt;
+
+// Windows page protection constants
+<span class="keyword">#define</span> <span class="constant">PAGE_EXECUTE</span> 0x10
+<span class="keyword">#define</span> <span class="constant">PAGE_EXECUTE_READ</span> 0x20
+<span class="keyword">#define</span> <span class="constant">PAGE_EXECUTE_READWRITE</span> 0x40
+<span class="keyword">#define</span> <span class="constant">PAGE_EXECUTE_WRITECOPY</span> 0x80
+<span class="keyword">#define</span> <span class="constant">PAGE_NOACCESS</span> 0x01
+<span class="keyword">#define</span> <span class="constant">PAGE_READONLY</span> 0x02
+<span class="keyword">#define</span> <span class="constant">PAGE_READWRITE</span> 0x04
+<span class="keyword">#define</span> <span class="constant">PAGE_WRITECOPY</span> 0x08
+
+// Function prototype for reading a physical address
+<span class="type">ULONG_PTR</span> <span class="function">ReadPhysicalAddress</span>(<span class="type">ULONG_PTR</span> PhysicalAddress);
+
+// Function to translate a virtual address to a physical address
+<span class="type">ULONG_PTR</span> <span class="function">TranslateVirtualToPhysical</span>(<span class="type">PVOID</span> VirtualAddress, <span class="type">PEPROCESS</span> Process) {
+    <span class="type">ULONG_PTR</span> virtualAddr = (<span class="type">ULONG_PTR</span>)VirtualAddress;
+    <span class="type">ULONG_PTR</span> cr3 = (<span class="type">ULONG_PTR</span>)<span class="function">PsGetProcessCr3</span>(Process); <span class="comment">// Get the CR3 register value for the process</span>
+
+    <span class="comment">// Extract indices from the virtual address</span>
+    <span class="type">ULONG_PTR</span> pml4Index = (virtualAddr >> 39) & 0x1FF;
+    <span class="type">ULONG_PTR</span> pdptIndex = (virtualAddr >> 30) & 0x1FF;
+    <span class="type">ULONG_PTR</span> pdIndex = (virtualAddr >> 21) & 0x1FF;
+    <span class="type">ULONG_PTR</span> ptIndex = (virtualAddr >> 12) & 0x1FF;
+    <span class="type">ULONG_PTR</span> offset = virtualAddr & 0xFFF;
+
+    <span class="comment">// Read PML4 entry</span>
+    <span class="type">ULONG_PTR</span> pml4Base = cr3 & ~0xFFF;
+    <span class="type">ULONG_PTR</span> pml4Entry = <span class="function">ReadPhysicalAddress</span>(pml4Base + pml4Index * <span class="keyword">sizeof</span>(<span class="type">ULONG_PTR</span>));
+    <span class="keyword">if</span> (!(pml4Entry & 1)) <span class="keyword">return</span> 0; <span class="comment">// Not present</span>
+
+    <span class="comment">// Read PDPT entry</span>
+    <span class="type">ULONG_PTR</span> pdptBase = pml4Entry & ~0xFFF;
+    <span class="type">ULONG_PTR</span> pdptEntry = <span class="function">ReadPhysicalAddress</span>(pdptBase + pdptIndex * <span class="keyword">sizeof</span>(<span class="type">ULONG_PTR</span>));
+    <span class="keyword">if</span> (!(pdptEntry & 1)) <span class="keyword">return</span> 0; <span class="comment">// Not present</span>
+
+    <span class="comment">// Read PD entry</span>
+    <span class="type">ULONG_PTR</span> pdBase = pdptEntry & ~0xFFF;
+    <span class="type">ULONG_PTR</span> pdEntry = <span class="function">ReadPhysicalAddress</span>(pdBase + pdIndex * <span class="keyword">sizeof</span>(<span class="type">ULONG_PTR</span>));
+    <span class="keyword">if</span> (!(pdEntry & 1)) <span class="keyword">return</span> 0; <span class="comment">// Not present</span>
+
+    <span class="comment">// Read PT entry</span>
+    <span class="type">ULONG_PTR</span> ptBase = pdEntry & ~0xFFF;
+    <span class="type">ULONG_PTR</span> ptEntry = <span class="function">ReadPhysicalAddress</span>(ptBase + ptIndex * <span class="keyword">sizeof</span>(<span class="type">ULONG_PTR</span>));
+    <span class="keyword">if</span> (!(ptEntry & 1)) <span class="keyword">return</span> 0; <span class="comment">// Not present</span>
+
+    <span class="comment">// Get physical address</span>
+    <span class="type">ULONG_PTR</span> pageBase = ptEntry & ~0xFFF;
+    <span class="keyword">return</span> pageBase + offset;
+}
+
+// Example usage
+<span class="type">VOID</span> <span class="function">ExampleUsage</span>(<span class="type">PEPROCESS</span> Process, <span class="type">PVOID</span> VirtualAddress) {
+    <span class="type">ULONG_PTR</span> physicalAddr = <span class="function">TranslateVirtualToPhysical</span>(VirtualAddress, Process);
+    <span class="keyword">if</span> (physicalAddr != 0) {
+        <span class="function">DbgPrint</span>(<span class="string">"Virtual Address %p maps to Physical Address %p\n"</span>, VirtualAddress, (<span class="type">PVOID</span>)physicalAddr);
+    } <span class="keyword">else</span> {
+        <span class="function">DbgPrint</span>(<span class="string">"Failed to translate Virtual Address %p to Physical Address\n"</span>, VirtualAddress);
+    }
+}
+
+// Helper function to read a physical address
+<span class="type">ULONG_PTR</span> <span class="function">ReadPhysicalAddress</span>(<span class="type">ULONG_PTR</span> PhysicalAddress) {
+    <span class="comment">// Placeholder implementation</span>
+    <span class="comment">// Replace this with actual code to read from the physical address</span>
+    <span class="comment">// For example, using MmMapIoSpace or similar functions</span>
+    <span class="keyword">return</span> PhysicalAddress;
+}</code></pre>
+
+    <h2>3. Read Memory Protection from the PTE</h2>
+    <p>You can now examine the PTE to determine the memory protection attributes. The PTE contains various flags, such as:</p>
+    <ul>
+        <li><strong>Present:</strong> Indicates if the page is in physical memory.</li>
+        <li><strong>Read/Write:</strong> Indicates if the page is writable.</li>
+        <li><strong>User/Supervisor:</strong> Indicates if the page is accessible from user mode.</li>
+        <li><strong>Execute Disable:</strong> Indicates if execution is disabled for the page.</li>
+    </ul>
+
+    <h3>Example Code for Checking Memory Protection</h3>
+    <pre><code><span class="type">ULONG</span> <span class="function">GetPageProtection</span>(<span class="type">PVOID</span> VirtualAddress, <span class="type">PEPROCESS</span> Process) {
+    <span class="type">ULONG_PTR</span> physAddr = <span class="function">TranslateVirtualToPhysical</span>(VirtualAddress, Process);
+    <span class="keyword">if</span> (physAddr == 0) {
+        <span class="function">DbgPrint</span>(<span class="string">"Page not present for virtual address: %p\n"</span>, VirtualAddress);
+        <span class="keyword">return</span> <span class="constant">PAGE_NOACCESS</span>;
+    }
+
+    <span class="comment">// Read PTE</span>
+    <span class="type">ULONG_PTR</span> ptEntry = <span class="function">ReadPhysicalAddress</span>(physAddr);
+
+    <span class="comment">// Extract protection information from PTE</span>
+    <span class="type">BOOLEAN</span> isPresent = (ptEntry & 0x1) != 0;
+    <span class="type">BOOLEAN</span> isWritable = (ptEntry & 0x2) != 0;
+    <span class="type">BOOLEAN</span> isUserAccessible = (ptEntry & 0x4) != 0;
+    <span class="type">BOOLEAN</span> isExecuteDisabled = (ptEntry & (1ULL << 63)) != 0;
+
+    <span class="keyword">if</span> (!isPresent) {
+        <span class="keyword">return</span> <span class="constant">PAGE_NOACCESS</span>;
+    }
+
+    <span class="keyword">if</span> (isExecuteDisabled) {
+        <span class="keyword">if</span> (isWritable) {
+            <span class="keyword">return</span> isUserAccessible ? <span class="constant">PAGE_READWRITE</span> : <span class="constant">PAGE_WRITECOPY</span>;
+        } <span class="keyword">else</span> {
+            <span class="keyword">return</span> isUserAccessible ? <span class="constant">PAGE_READONLY</span> : <span class="constant">PAGE_NOACCESS</span>;
+        }
+    } <span class="keyword">else</span> {
+        <span class="keyword">if</span> (isWritable) {
+            <span class="keyword">return</span> isUserAccessible ? <span class="constant">PAGE_EXECUTE_READWRITE</span> : <span class="constant">PAGE_EXECUTE_WRITECOPY</span>;
+        } <span class="keyword">else</span> {
+            <span class="keyword">return</span> isUserAccessible ? <span class="constant">PAGE_EXECUTE_READ</span> : <span class="constant">PAGE_EXECUTE</span>;
+        }
+    }
+}</code></pre>
+
+    <h2>4. Check if the Page is Committed</h2>
+    <p>A page is considered committed if it is either present in physical memory or in transition (paged out but still committed). Here's how to check if a page is committed:</p>
+    <pre><code><span class="type">BOOLEAN</span> <span class="function">IsPageCommitted</span>(<span class="type">PVOID</span> VirtualAddress, <span class="type">PEPROCESS</span> Process) {
+    <span class="type">ULONG_PTR</span> physAddr = <span class="function">TranslateVirtualToPhysical</span>(VirtualAddress, Process);
+    <span class="keyword">if</span> (physAddr == 0) {
+        <span class="function">DbgPrint</span>(<span class="string">"Page not present for virtual address: %p\n"</span>, VirtualAddress);
+        <span class="keyword">return</span> <span class="keyword">FALSE</span>;
+    }
+
+    <span class="comment">// Read PTE</span>
+    <span class="type">ULONG_PTR</span> ptEntry = <span class="function">ReadPhysicalAddress</span>(physAddr);
+
+    <span class="comment">// Check if the page is committed</span>
+    <span class="comment">// Page is committed if the Present bit is set or if it's in transition (prototype PTE)</span>
+    <span class="type">BOOLEAN</span> isPresent = (ptEntry & 0x1) != 0;
+    <span class="type">BOOLEAN</span> isPrototypePte = (ptEntry & 0x400) != 0; <span class="comment">// Example bit for prototype PTE, adjust based on actual architecture</span>
+
+    <span class="keyword">return</span> isPresent || isPrototypePte;
+}
+
+// Example usage
+<span class="type">VOID</span> <span class="function">ExampleUsage</span>(<span class="type">PEPROCESS</span> Process, <span class="type">PVOID</span> VirtualAddress) {
+    <span class="keyword">if</span> (<span class="function">IsPageCommitted</span>(VirtualAddress, Process)) {
+        <span class="function">DbgPrint</span>(<span class="string">"Page is committed for virtual address: %p\n"</span>, VirtualAddress);
+    } <span class="keyword">else</span> {
+        <span class="function">DbgPrint</span>(<span class="string">"Page is not committed for virtual address: %p\n"</span>, VirtualAddress);
+    }
+}</code></pre>
+
+    <h2>Summary</h2>
+    <ul>
+        <li>You can use any address within a page to get the physical address and read the PTE.</li>
+        <li>The page offset within the virtual address doesn't affect the PTE lookup, as it only determines the exact byte within the 4 KB page.</li>
+        <li>Extract the indices (PML4, PDPT, PD, PT) from the virtual address and use them to walk through the page tables.</li>
+        <li>The PTE contains the physical page address and protection attributes, which you can read to determine memory protection.</li>
+        <li>A page is considered committed if it is present in physical memory or if it is in transition (paged out but still committed).</li>
+        <li>The <code>GetPageProtection</code> function returns a protection value based on Windows page protection constants.</li>
+    </ul>
+</body>
+</html>

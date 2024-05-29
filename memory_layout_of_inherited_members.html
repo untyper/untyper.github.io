@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Struct Inheritance Memory Layout</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .language-cpp .keyword {
+            color: #0000ff;
+            font-weight: bold;
+        }
+        .language-cpp .type {
+            color: #2b91af;
+        }
+        .language-cpp .comment {
+            color: #008000;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Struct Inheritance Memory Layout</h1>
+    <p>If <code>struct B</code> with member <code>int x</code> inherits from <code>struct A</code> with public members <code>int a</code> and <code>int b</code>, when viewing the memory layout of <code>struct B</code>, do inherited members <code>int a</code> and <code>int b</code> appear before <code>int x</code>? If this is correct, then assuming that <code>int</code> is 4 bytes, does this mean that <code>int x</code> offset within <code>struct B</code> is 0x8?</p>
+    <h2>Answer</h2>
+    <p>Yes, your understanding is correct. When <code>struct B</code> inherits from <code>struct A</code>, the members of <code>struct A</code> will appear first in the memory layout of <code>struct B</code>, followed by the members of <code>struct B</code>.</p>
+    <h3>Memory Layout Example</h3>
+    <pre class="language-cpp"><code class="language-cpp">
+<span class="type">struct</span> <span class="type">A</span> {
+    <span class="type">int</span> a;
+    <span class="type">int</span> b;
+};
+
+<span class="type">struct</span> <span class="type">B</span> : <span class="keyword">public</span> <span class="type">A</span> {
+    <span class="type">int</span> x;
+};
+</code></pre>
+    <h3>Memory Layout Analysis</h3>
+    <p>Given that an <code>int</code> is typically 4 bytes, the memory layout would be as follows:</p>
+    <ul>
+        <li><code>struct A</code> contains:
+            <ul>
+                <li><code>int a</code> at offset 0x0</li>
+                <li><code>int b</code> at offset 0x4</li>
+            </ul>
+        </li>
+        <li>When <code>struct B</code> inherits from <code>struct A</code>, it extends <code>struct A</code> by adding its own member(s) after those of <code>struct A</code>. Thus, the memory layout of <code>struct B</code> is:
+            <ul>
+                <li>Inherited from <code>struct A</code>:
+                    <ul>
+                        <li><code>int a</code> at offset 0x0</li>
+                        <li><code>int b</code> at offset 0x4</li>
+                    </ul>
+                </li>
+                <li>Added in <code>struct B</code>:
+                    <ul>
+                        <li><code>int x</code> at offset 0x8</li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+    <h3>Memory Offsets</h3>
+    <ul>
+        <li>The offset of <code>int a</code> in <code>struct B</code> is 0x0.</li>
+        <li>The offset of <code>int b</code> in <code>struct B</code> is 0x4.</li>
+        <li>The offset of <code>int x</code> in <code>struct B</code> is 0x8.</li>
+    </ul>
+    <h3>Visual Representation:</h3>
+    <pre class="language-cpp"><code class="language-cpp">
+<span class="type">struct</span> <span class="type">B</span> {
+    <span class="type">int</span> a; <span class="comment">// Offset 0x0</span>
+    <span class="type">int</span> b; <span class="comment">// Offset 0x4</span>
+    <span class="type">int</span> x; <span class="comment">// Offset 0x8</span>
+};
+</code></pre>
+    <h3>Conclusion</h3>
+    <p>Therefore, <code>int x</code> in <code>struct B</code> does indeed appear after the inherited members <code>int a</code> and <code>int b</code>. Given that each <code>int</code> is 4 bytes, the offset of <code>int x</code> within <code>struct B</code> is 0x8.</p>
+</body>
+</html>

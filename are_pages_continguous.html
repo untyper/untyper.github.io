@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Address Space and Contiguity of Pages</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow: auto;
+        }
+        code {
+            font-family: Consolas, monospace;
+            color: #d63384;
+        }
+        .keyword { color: #0000ff; }
+        .type { color: #2b91af; }
+        .comment { color: #008000; }
+        .string { color: #a31515; }
+        .number { color: #098658; }
+    </style>
+</head>
+<body>
+
+    <h1>Are pages contiguous in the virtual address space?</h1>
+    
+    <p>In a virtual memory system, the concept of whether pages are contiguous in the virtual address space can be nuanced. Here are the key points to understand:</p>
+
+    <h2>Contiguity in Virtual Address Space:</h2>
+    <p><strong>Yes, typically:</strong> In the virtual address space, pages are usually represented as contiguous blocks. This means that if you have virtual page numbers (VPN) 0, 1, 2, etc., the corresponding virtual addresses would be contiguous. For example, if each page is 4KB, VPN 0 might start at address 0x0000, VPN 1 at address 0x1000, VPN 2 at address 0x2000, and so on.</p>
+
+    <h2>Physical Memory Layout:</h2>
+    <p><strong>No, not necessarily:</strong> The physical memory layout, where these pages actually reside in RAM, does not have to be contiguous. The operating system and the memory management unit (MMU) handle the mapping from virtual addresses to physical addresses, which can result in virtual pages that appear contiguous actually being scattered across different locations in physical memory.</p>
+
+    <h2>Advantages of Virtual Memory:</h2>
+    <p><strong>Flexibility:</strong> This separation allows the operating system to use physical memory more efficiently and flexibly. For instance, it can place non-contiguous physical memory frames together in the virtual address space, handle fragmentation, and provide processes with their own isolated address spaces.</p>
+    <p><strong>Security and Isolation:</strong> Virtual memory ensures that processes are isolated from each other, preventing one process from accessing the memory of another.</p>
+
+    <h2>Example Illustration</h2>
+    <p>Imagine a scenario with a page size of 4KB (4096 bytes):</p>
+    <ul>
+        <li>Virtual pages:
+            <ul>
+                <li>VPN 0: Virtual address range 0x0000 to 0x0FFF</li>
+                <li>VPN 1: Virtual address range 0x1000 to 0x1FFF</li>
+                <li>VPN 2: Virtual address range 0x2000 to 0x2FFF</li>
+            </ul>
+        </li>
+    </ul>
+    <p>These ranges are contiguous in the virtual address space. However, their mapping to physical memory could be non-contiguous:</p>
+    <ul>
+        <li>Physical frames:
+            <ul>
+                <li>Physical frame 23: Physical address range 0x5C000 to 0x5CFFF</li>
+                <li>Physical frame 42: Physical address range 0xA8000 to 0xA8FFF</li>
+                <li>Physical frame 5: Physical address range 0x14000 to 0x14FFF</li>
+            </ul>
+        </li>
+    </ul>
+    <p>The operating system might map VPN 0 to physical frame 23, VPN 1 to physical frame 42, and VPN 2 to physical frame 5. This results in the virtual address space appearing contiguous to the process, while the underlying physical addresses are not.</p>
+
+    <h2>Code Illustration in C++</h2>
+    <p>Here’s a simple C++ illustration showing how virtual addresses might be translated to physical addresses:</p>
+
+    <pre><code><span class="keyword">#include</span> <span class="string">&lt;iostream&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;unordered_map&gt;</span>
+
+<span class="comment">// Example function to translate virtual addresses to physical addresses</span>
+<span class="type">uint64_t</span> translateVirtualToPhysical(<span class="type">uint64_t</span> virtualAddress, <span class="keyword">const</span> std::unordered_map&lt;<span class="type">uint64_t</span>, <span class="type">uint64_t</span>&gt;&amp; pageTable, <span class="type">uint64_t</span> pageSize) {
+    <span class="comment">// Extract the virtual page number (VPN)</span>
+    <span class="type">uint64_t</span> vpn = virtualAddress / pageSize;
+    <span class="comment">// Extract the offset within the page</span>
+    <span class="type">uint64_t</span> offset = virtualAddress % pageSize;
+    
+    <span class="comment">// Look up the physical page number (PPN) in the page table</span>
+    <span class="keyword">if</span> (pageTable.find(vpn) != pageTable.end()) {
+        <span class="type">uint64_t</span> ppn = pageTable.at(vpn);
+        <span class="comment">// Calculate the physical address</span>
+        <span class="keyword">return</span> (ppn * pageSize) + offset;
+    } <span class="keyword">else</span> {
+        std::cerr &lt;&lt; <span class="string">"Page fault: VPN "</span> &lt;&lt; vpn &lt;&lt; <span class="string">" not found in page table."</span> &lt;&lt; std::endl;
+        <span class="keyword">return</span> 0; <span class="comment">// Indicate a page fault</span>
+    }
+}
+
+<span class="keyword">int</span> main() {
+    <span class="type">uint64_t</span> pageSize = 4096; <span class="comment">// 4KB page size</span>
+
+    <span class="comment">// Example page table mapping VPN to PPN</span>
+    std::unordered_map&lt;<span class="type">uint64_t</span>, <span class="type">uint64_t</span>&gt; pageTable = {
+        {0, 23},  <span class="comment">// VPN 0 -&gt; PPN 23</span>
+        {1, 42},  <span class="comment">// VPN 1 -&gt; PPN 42</span>
+        {2, 5}    <span class="comment">// VPN 2 -&gt; PPN 5</span>
+    };
+
+    <span class="type">uint64_t</span> virtualAddress = 0x1000; <span class="comment">// Example virtual address (page 1, offset 0)</span>
+    
+    <span class="type">uint64_t</span> physicalAddress = translateVirtualToPhysical(virtualAddress, pageTable, pageSize);
+    
+    std::cout &lt;&lt; <span class="string">"Physical Address: "</span> &lt;&lt; std::hex &lt;&lt; physicalAddress &lt;&lt; std::endl;
+    
+    <span class="keyword">return</span> 0;
+}
+</code></pre>
+
+    <h2>Explanation:</h2>
+    <ul>
+        <li><strong>Page Table</strong>: The <code>pageTable</code> maps virtual page numbers (VPN) to physical page numbers (PPN).</li>
+        <li><strong>Translation Function</strong>:
+            <ul>
+                <li><strong>VPN Extraction</strong>: Calculate the VPN by dividing the virtual address by the page size.</li>
+                <li><strong>Offset Extraction</strong>: Calculate the offset within the page by taking the remainder of the division of the virtual address by the page size.</li>
+                <li><strong>Physical Address Calculation</strong>: Lookup the PPN in the page table and combine it with the offset to get the physical address.</li>
+            </ul>
+        </li>
+        <li><strong>Page Fault Handling</strong>: If the VPN is not found in the page table, a page fault occurs.</li>
+    </ul>
+    <p>This code shows the logical process behind translating virtual addresses to physical addresses, illustrating how virtual pages can appear contiguous while being physically non-contiguous.</p>
+
+</body>
+</html>

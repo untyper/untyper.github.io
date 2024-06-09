@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Understanding SSL/TLS and Keys</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        pre {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 3px solid #f36d33;
+            color: #333;
+            page-break-inside: avoid;
+            font-family: monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 1.6em;
+            max-width: 100%;
+            overflow: auto;
+            padding: 1em 1.5em;
+            display: block;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: monospace;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 1.2em;
+            margin-bottom: 1.2em;
+            color: #333;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.75em; }
+        h3 { font-size: 1.5em; }
+        h4 { font-size: 1.25em; }
+        h5 { font-size: 1em; }
+        h6 { font-size: 0.875em; }
+        p {
+            margin: 1.2em 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Understanding SSL/TLS and Keys</h1>
+    <h2>SSL/TLS Handshake and Key Usage</h2>
+
+    <p>1. <strong>Initial Connection</strong>:</p>
+    <p>Client Hello: The client sends a message to the server to start the handshake, specifying supported SSL/TLS versions and cipher suites.</p>
+
+    <p>2. <strong>Server Response</strong>:</p>
+    <p>Server Hello: The server responds with its SSL certificate, which contains the server’s public key, and chooses the SSL/TLS version and cipher suite for the session.</p>
+
+    <p>3. <strong>Certificate Verification</strong>:</p>
+    <p>Client Verification: The client verifies the server's SSL certificate by checking the CA's signature and ensuring the certificate is valid and trusted.</p>
+
+    <p>4. <strong>Pre-Master Secret</strong>:</p>
+    <p>Client Creates Pre-Master Secret: The client generates a pre-master secret, a random number used to derive the session key.</p>
+    <p>Encryption with Public Key: The client encrypts the pre-master secret using the server’s public key (from the SSL certificate) and sends it to the server.</p>
+
+    <p>5. <strong>Decryption</strong>:</p>
+    <p>Server Decrypts Pre-Master Secret: The server uses its private key to decrypt the pre-master secret.</p>
+
+    <p>6. <strong>Session Key Generation</strong>:</p>
+    <p>Both Generate Session Key: Both the client and the server use the pre-master secret, along with some additional random numbers exchanged during the handshake, to independently generate the same session key.</p>
+
+    <h2>Role of Each Key</h2>
+
+    <p>- <strong>Public Key (From Server’s Certificate)</strong>:</p>
+    <p>Purpose: Encrypts the pre-master secret.</p>
+    <p>Usage: Used only during the initial handshake to securely transmit the pre-master secret.</p>
+
+    <p>- <strong>Private Key (Held by Server)</strong>:</p>
+    <p>Purpose: Decrypts the pre-master secret.</p>
+    <p>Usage: Used only during the initial handshake to retrieve the pre-master secret.</p>
+
+    <p>- <strong>Session Key (Symmetric Key)</strong>:</p>
+    <p>Purpose: Encrypts and decrypts data for the remainder of the session.</p>
+    <p>Usage: Used for all subsequent communication between the client and the server during the session. It ensures fast and efficient encryption/decryption due to the symmetric nature of the key.</p>
+
+    <h2>Summary</h2>
+
+    <p>- Public Key: Used to securely exchange the pre-master secret during the initial handshake.</p>
+    <p>- Private Key: Used by the server to decrypt the pre-master secret.</p>
+    <p>- Session Key: Used for encrypting and decrypting the actual data exchanged during the session.</p>
+
+    <h2>Example Scenario</h2>
+
+    <p>1. Client connects to the server and receives the server’s SSL certificate containing the public key.</p>
+    <p>2. Client verifies the certificate and extracts the public key.</p>
+    <p>3. Client generates a pre-master secret, encrypts it with the server’s public key, and sends it to the server.</p>
+    <p>4. Server receives and decrypts the pre-master secret using its private key.</p>
+    <p>5. Both client and server generate the session key based on the pre-master secret.</p>
+    <p>6. Client and server use the session key for encrypting and decrypting the data for the rest of the session.</p>
+
+    <p>This ensures that the initial exchange is secure and that subsequent communication is efficient and protected.</p>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Understanding SSL_read and SSL_pending</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        pre {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 3px solid #f36d33;
+            color: #333;
+            page-break-inside: avoid;
+            font-family: monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 1.6em;
+            max-width: 100%;
+            overflow: auto;
+            padding: 1em 1.5em;
+            display: block;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: monospace;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 1.2em;
+            margin-bottom: 1.2em;
+            color: #333;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.75em; }
+        h3 { font-size: 1.5em; }
+        h4 { font-size: 1.25em; }
+        h5 { font-size: 1em; }
+        h6 { font-size: 0.875em; }
+        p {
+            margin: 1.2em 0;
+        }
+        .keyword { color: #0000ff; font-weight: bold; }
+        .type { color: #2b91af; font-weight: bold; }
+        .function { color: #795e26; }
+        .constant { color: #a31515; }
+        .comment { color: #008000; font-style: italic; }
+        .string { color: #a31515; }
+    </style>
+</head>
+<body>
+    <h1>Understanding <code>SSL_read</code> and <code>SSL_pending</code></h1>
+    <p>Detailed breakdown of how <code>SSL_read</code> and <code>SSL_pending</code> work together:</p>
+    
+    <h2>Detailed Workflow</h2>
+    <ol>
+        <li>
+            <strong>Encrypted Data Arrival</strong>: Encrypted data arrives at the underlying socket from the remote peer.
+        </li>
+        <li>
+            <strong>Initial Read with <code>SSL_read</code></strong>:
+            <ul>
+                <li>When you first call <code>SSL_read</code>, it will attempt to read encrypted data from the underlying socket.</li>
+                <li>This data is then decrypted by the SSL/TLS layer and placed into the internal buffer of the SSL structure.</li>
+                <li><code>SSL_read</code> will return the number of bytes of decrypted data read from the internal buffer to your provided buffer.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Internal Buffer Check</strong>:
+            <ul>
+                <li>After the initial call to <code>SSL_read</code>, if there is still more decrypted data available in the internal buffer, subsequent calls to <code>SSL_read</code> will read this data directly from the internal buffer.</li>
+                <li>The function <code>SSL_pending</code> can be used to determine how many bytes are available in the internal buffer.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Reading Decrypted Data</strong>:
+            <ul>
+                <li><code>SSL_read</code> will continue to return data from the internal buffer until it is exhausted.</li>
+                <li>While there is still data in the internal buffer (as indicated by <code>SSL_pending</code>), <code>SSL_read</code> will not read more encrypted data from the socket.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Reading More Encrypted Data</strong>:
+            <ul>
+                <li>Once the internal buffer is empty (i.e., <code>SSL_pending</code> returns 0), a subsequent call to <code>SSL_read</code> will again read more encrypted data from the socket, decrypt it, and place it into the internal buffer.</li>
+                <li><code>SSL_read</code> will then return the newly decrypted data to your provided buffer.</li>
+            </ul>
+        </li>
+    </ol>
+    
+    <h2>Example Flow</h2>
+    <p>Consider the following example to illustrate this workflow:</p>
+    <pre><code class="language-c"><span class="keyword">#include</span> <span class="string">&lt;openssl/ssl.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;openssl/err.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;stdlib.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;stdio.h&gt;</span>
+
+<span class="keyword">#define</span> <span class="constant">BUFFER_SIZE</span> <span class="constant">4096</span>
+
+<span class="keyword">void</span> <span class="function">process_data</span>(<span class="keyword">unsigned char</span> *data, <span class="keyword">int</span> length) {
+    <span class="comment">// Function to process the decrypted data</span>
+    <span class="function">printf</span>(<span class="string">"Received data: %.*s\n"</span>, length, data);
+}
+
+<span class="keyword">int</span> <span class="function">read_ssl_data</span>(<span class="type">SSL</span> *ssl) {
+    <span class="keyword">int</span> total_bytes_read = <span class="constant">0</span>;
+    <span class="keyword">int</span> bytes_read;
+    <span class="keyword">unsigned char</span> *buffer = <span class="function">malloc</span>(BUFFER_SIZE);
+    <span class="keyword">if</span> (!buffer) {
+        <span class="function">perror</span>(<span class="string">"Failed to allocate buffer"</span>);
+        <span class="keyword">return</span> -<span class="constant">1</span>;
+    }
+
+    <span class="keyword">while</span> (<span class="constant">1</span>) {
+        <span class="comment">// Read decrypted data</span>
+        bytes_read = <span class="type">SSL_read</span>(ssl, buffer, BUFFER_SIZE);
+        <span class="keyword">if</span> (bytes_read &lt;= <span class="constant">0</span>) {
+            <span class="keyword">int</span> err = <span class="function">SSL_get_error</span>(ssl, bytes_read);
+            <span class="keyword">if</span> (err == <span class="type">SSL_ERROR_WANT_READ</span> || err == <span class="type">SSL_ERROR_WANT_WRITE</span>) {
+                <span class="comment">// Non-blocking mode, need to retry</span>
+                <span class="keyword">continue</span>;
+            }
+            <span class="comment">// Handle other errors or connection closure</span>
+            <span class="function">free</span>(buffer);
+            <span class="keyword">return</span> bytes_read;
+        }
+        total_bytes_read += bytes_read;
+        
+        <span class="comment">// Process the decrypted data</span>
+        <span class="function">process_data</span>(buffer, bytes_read);
+
+        <span class="comment">// Check for additional pending decrypted data</span>
+        <span class="keyword">int</span> pending = <span class="type">SSL_pending</span>(ssl);
+        <span class="keyword">while</span> (pending &gt; <span class="constant">0</span>) {
+            bytes_read = <span class="type">SSL_read</span>(ssl, buffer, BUFFER_SIZE);
+            <span class="keyword">if</span> (bytes_read &lt;= <span class="constant">0</span>) {
+                <span class="keyword">int</span> err = <span class="function">SSL_get_error</span>(ssl, bytes_read);
+                <span class="keyword">if</span> (err == <span class="type">SSL_ERROR_WANT_READ</span> || err == <span class="type">SSL_ERROR_WANT_WRITE</span>) {
+                    <span class="keyword">continue</span>;
+                }
+                <span class="function">free</span>(buffer);
+                <span class="keyword">return</span> bytes_read;
+            }
+            total_bytes_read += bytes_read;
+            <span class="function">process_data</span>(buffer, bytes_read);
+            pending = <span class="type">SSL_pending</span>(ssl);
+        }
+    }
+
+    <span class="function">free</span>(buffer);
+    <span class="keyword">return</span> total_bytes_read;
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    <span class="comment">// Assume SSL *ssl is properly initialized and connected</span>
+    <span class="type">SSL</span> *ssl;  <span class="comment">// SSL initialization and connection code goes here</span>
+
+    <span class="keyword">int</span> result = <span class="function">read_ssl_data</span>(ssl);
+    <span class="keyword">if</span> (result &lt; <span class="constant">0</span>) {
+        <span class="function">fprintf</span>(stderr, <span class="string">"Error reading data\n"</span>);
+    } <span class="keyword">else</span> {
+        <span class="function">printf</span>(<span class="string">"Total bytes read: %d\n"</span>, result);
+    }
+
+    <span class="comment">// Cleanup SSL connection</span>
+    <span class="function">SSL_free</span>(ssl);
+
+    <span class="keyword">return</span> <span class="constant">0</span>;
+}
+</code></pre>
+    
+    <h2>Summary</h2>
+    <ul>
+        <li><strong>Internal Buffer</strong>: <code>SSL_read</code> first reads decrypted data from the internal buffer if available.</li>
+        <li><strong>Pending Data</strong>: Use <code>SSL_pending</code> to check how many bytes are available in the internal buffer.</li>
+        <li><strong>Socket Read</strong>: <code>SSL_read</code> will read from the underlying socket and decrypt more data only when the internal buffer is empty.</li>
+        <li><strong>Dynamic Buffering</strong>: You can manage your buffer dynamically based on the amount of decrypted data available, ensuring efficient handling of varying data sizes.</li>
+    </ul>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Database Basics</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 40px;
+      background-color: #2e2e2e;
+      color: #f8f8f8;
+    }
+    h1, h2, h3 {
+      color: #ffffff;
+    }
+    pre {
+      background: #3b3b3b;
+      color: #f8f8f8;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: "Courier New", monospace;
+    }
+    .sql-keyword {
+      color: #a1ceff;
+      font-weight: bold;
+    }
+    .sql-type {
+      color: #ffa07a;
+      font-weight: bold;
+    }
+    .string {
+      color: #ff9d9d;
+    }
+    .number {
+      color: #fff788;
+    }
+    .comment {
+      color: #66cc66;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>SQL Database Basics: A Beginner’s Guide</h1>
+  <p>SQL (Structured Query Language) is used to manage and manipulate relational databases. Below is a simple guide covering the basics.</p>
+
+  <h2>1. SQL Database Structure</h2>
+  <p>A relational database consists of:</p>
+  <ul>
+      <li><b>Tables</b> (Store data in rows and columns)</li>
+      <li><b>Columns</b> (Define data types like text, numbers, dates)</li>
+      <li><b>Rows (Records)</b> (Each row is a single entry)</li>
+      <li><b>Primary Keys</b> (Unique identifier for each row)</li>
+      <li><b>Foreign Keys</b> (Links between tables)</li>
+  </ul>
+
+  <h2>2. Creating a Database</h2>
+  <pre><code><span class="sql-keyword">CREATE DATABASE</span> my_database;</code></pre>
+  <pre><code><span class="sql-keyword">USE</span> my_database;</code></pre>
+
+  <h2>3. Creating a Table</h2>
+  <pre><code><span class="sql-keyword">CREATE TABLE</span> users (
+    id <span class="sql-type">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    name <span class="sql-type">VARCHAR(50)</span>,
+    email <span class="sql-type">VARCHAR(100) UNIQUE</span>
+  );</code></pre>
+
+  <h2>4. Inserting Data into a Table</h2>
+  <pre><code><span class="sql-keyword">INSERT INTO</span> users (name, email) <span class="sql-keyword">VALUES</span> (<span class="string">'Alice'</span>, <span class="string">'alice@email.com'</span>);
+<span class="sql-keyword">INSERT INTO</span> users (name, email) <span class="sql-keyword">VALUES</span> (<span class="string">'Bob'</span>, <span class="string">'bob@email.com'</span>);</code></pre>
+
+  <h2>5. Reading Data from a Table (SELECT)</h2>
+  <pre><code><span class="sql-keyword">SELECT *</span> <span class="sql-keyword">FROM</span> users;</code></pre>
+  <pre><code><span class="sql-keyword">SELECT</span> name, email <span class="sql-keyword">FROM</span> users;</code></pre>
+  <pre><code><span class="sql-keyword">SELECT *</span> <span class="sql-keyword">FROM</span> users <span class="sql-keyword">WHERE</span> name = <span class="string">'Alice'</span>;</code></pre>
+
+  <h2>6. Updating Data</h2>
+  <pre><code><span class="sql-keyword">UPDATE</span> users <span class="sql-keyword">SET</span> email = <span class="string">'alice123@email.com'</span> <span class="sql-keyword">WHERE</span> name = <span class="string">'Alice'</span>;</code></pre>
+
+  <h2>7. Deleting Data</h2>
+  <pre><code><span class="sql-keyword">DELETE FROM</span> users <span class="sql-keyword">WHERE</span> name = <span class="string">'Bob'</span>;</code></pre>
+  <pre><code><span class="sql-keyword">DELETE FROM</span> users;</code></pre>
+
+  <h2>8. Joining Tables</h2>
+  <pre><code><span class="sql-keyword">SELECT</span> users.name, orders.product, orders.price 
+<span class="sql-keyword">FROM</span> users
+<span class="sql-keyword">JOIN</span> orders <span class="sql-keyword">ON</span> users.id = orders.user_id;</code></pre>
+
+  <h2>9. Other Useful SQL Commands</h2>
+  <h3>Sorting Results</h3>
+  <pre><code><span class="sql-keyword">SELECT *</span> <span class="sql-keyword">FROM</span> users <span class="sql-keyword">ORDER BY</span> name <span class="sql-keyword">ASC</span>;</code></pre>
+
+  <h3>Counting Rows</h3>
+  <pre><code><span class="sql-keyword">SELECT COUNT(*)</span> <span class="sql-keyword">FROM</span> users;</code></pre>
+
+  <h2>Conclusion</h2>
+  <p>Summary of the guide or final thoughts.</p>
+</body>
+</html>
